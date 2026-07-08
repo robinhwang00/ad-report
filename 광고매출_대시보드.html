@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>샵라이브 광고 올인원 패키지 매출 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a23; --border:#262b38; --text:#e8eaf0; --sub:#9aa1b2;
+    --accent:#6c8bff; --accent2:#ff9d6c; --accent3:#5fd0a3; --accent4:#c98cff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Pretendard,Arial,sans-serif;
+    background:var(--bg); color:var(--text); padding:32px;
+  }
+  h1{font-size:20px; margin:0 0 4px;}
+  .sub{color:var(--sub); font-size:13px; margin-bottom:24px;}
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px;}
+  .kpi{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px;}
+  .kpi .label{font-size:12px; color:var(--sub); margin-bottom:6px;}
+  .kpi .value{font-size:20px; font-weight:700;}
+  .kpi .sub2{font-size:11px; color:var(--sub); margin-top:4px;}
+  .kpi.current{border-color:var(--accent);}
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:20px 22px 12px; margin-bottom:24px;
+  }
+  .card h2{font-size:15px; margin:0 0 2px;}
+  .card p.desc{font-size:12px; color:var(--sub); margin:0 0 14px;}
+  .chart-wrap{position:relative; height:340px;}
+  .note{font-size:11px; color:var(--sub); margin-top:10px; line-height:1.6;}
+</style>
+</head>
+<body>
+
+<h1>2026 샵라이브 광고 올인원 패키지 — 매출 대시보드</h1>
+<div class="sub">데이터 기준: 2026-07-08 (7월은 8일까지 집행 완료분 기준) · 출처: 2026 샵라이브 광고 올인원 패키지 모니터링 시트 &gt; 월 별 MoM 리스트</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="card">
+  <h2>일별 광고매출 추이 (4월 ~ 현재)</h2>
+  <p class="desc">4월 1일부터 7월 8일(오늘)까지 집행일 기준 일별 매출(VAT 포함, 누적이 아닌 당일 실적)을 하나의 연속된 꺾은선으로 표시했습니다.</p>
+  <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+  <div class="note" style="display:flex; gap:16px; margin-top:12px;">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c98cff;margin-right:5px;"></span>4월</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#5fd0a3;margin-right:5px;"></span>5월</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ff9d6c;margin-right:5px;"></span>6월</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6c8bff;margin-right:5px;"></span>7월</span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>당월(7월) 누적 매출 추이 — 전월 비교</h2>
+  <p class="desc">일자별 누적 매출(VAT 포함)을 4개월 겹쳐서 비교한 그래프입니다. 7월(굵은 선)은 8일까지만 데이터가 있어 이후 구간은 표시되지 않습니다.</p>
+  <div class="chart-wrap"><canvas id="momChart"></canvas></div>
+  <div class="note">※ MoM 리스트 시트의 "매출 합계(VAT 포함)"는 해당 월 1일부터 집행일 기준 누적 합산 값입니다.</div>
+</div>
+
+<script>
+const data = {"monthly_summary": {"4월": {"count": 103, "days_elapsed": 30, "total_rev_incl": 81647500, "avg_daily_rev": 2721583, "avg_daily_count": 3.43}, "5월": {"count": 94, "days_elapsed": 31, "total_rev_incl": 83215000, "avg_daily_rev": 2684355, "avg_daily_count": 3.03}, "6월": {"count": 92, "days_elapsed": 30, "total_rev_incl": 101546500, "avg_daily_rev": 3384883, "avg_daily_count": 3.07}, "7월": {"count": 18, "days_elapsed": 8, "total_rev_incl": 45540000, "avg_daily_rev": 5692500, "avg_daily_count": 2.25}}, "cum_series": {"4월": [21670000, 25190000, 26565000, 26565000, 26565000, 29040000, 32340000, 34732500, 41662500, 41662500, 41662500, 41662500, 44550000, 46365000, 48565000, 53680000, 58465000, 58465000, 58465000, 61187500, 64047500, 69492500, 70812500, 74277500, 74277500, 74277500, 77907500, 80547500, 80547500, 81647500, null], "5월": [40067500, 40067500, 40067500, 42872500, 42872500, 45760000, 48400000, 51040000, 51040000, 51040000, 56320000, 56815000, 60610000, 65395000, 67870000, 67870000, 67870000, 71005000, 72160000, 76120000, 79420000, 82720000, 82720000, 82720000, 82720000, 83215000, 83215000, 83215000, 83215000, 83215000, 83215000], "6월": [55049500, 58569500, 58569500, 61044500, 61594500, 61594500, 61594500, 62694500, 63244500, 65191500, 71846500, 74002500, 74002500, 74002500, 74002500, 75652500, 79332000, 81587000, 88407000, 88407000, 88407000, 90937000, 91597000, 98829500, 100006500, 100006500, 100006500, 100006500, 100996500, 101546500, null], "7월": [33000000, 37015000, 39545000, 39545000, 39545000, 41525000, 41855000, 45540000, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]}, "as_of": "2026-07-08"};
+const daily = {"labels": ["4/1", "4/2", "4/3", "4/4", "4/5", "4/6", "4/7", "4/8", "4/9", "4/10", "4/11", "4/12", "4/13", "4/14", "4/15", "4/16", "4/17", "4/18", "4/19", "4/20", "4/21", "4/22", "4/23", "4/24", "4/25", "4/26", "4/27", "4/28", "4/29", "4/30", "5/1", "5/2", "5/3", "5/4", "5/5", "5/6", "5/7", "5/8", "5/9", "5/10", "5/11", "5/12", "5/13", "5/14", "5/15", "5/16", "5/17", "5/18", "5/19", "5/20", "5/21", "5/22", "5/23", "5/24", "5/25", "5/26", "5/27", "5/28", "5/29", "5/30", "5/31", "6/1", "6/2", "6/3", "6/4", "6/5", "6/6", "6/7", "6/8", "6/9", "6/10", "6/11", "6/12", "6/13", "6/14", "6/15", "6/16", "6/17", "6/18", "6/19", "6/20", "6/21", "6/22", "6/23", "6/24", "6/25", "6/26", "6/27", "6/28", "6/29", "6/30", "7/1", "7/2", "7/3", "7/4", "7/5", "7/6", "7/7", "7/8"], "daily_rev": [21670000, 3520000, 1375000, 0, 0, 2475000, 3300000, 2392500, 6930000, 0, 0, 0, 2887500, 1815000, 2200000, 5115000, 4785000, 0, 0, 2722500, 2860000, 5445000, 1320000, 3465000, 0, 0, 3630000, 2640000, 0, 1100000, 40067500, 0, 0, 2805000, 0, 2887500, 2640000, 2640000, 0, 0, 5280000, 495000, 3795000, 4785000, 2475000, 0, 0, 3135000, 1155000, 3960000, 3300000, 3300000, 0, 0, 0, 495000, 0, 0, 0, 0, 0, 55049500, 3520000, 0, 2475000, 550000, 0, 0, 1100000, 550000, 1947000, 6655000, 2156000, 0, 0, 0, 1650000, 3679500, 2255000, 6820000, 0, 0, 2530000, 660000, 7232500, 1177000, 0, 0, 0, 990000, 550000, 33000000, 4015000, 2530000, 0, 0, 1980000, 330000, 3685000]};
+
+const monthOrder = ["4월","5월","6월","7월"];
+const colors = { "4월":"#c98cff", "5월":"#5fd0a3", "6월":"#ff9d6c", "7월":"#6c8bff" };
+const monthBoundaries = { "4월":30, "5월":31, "6월":30, "7월":8 };
+
+// KPI cards
+const kpiRow = document.getElementById('kpiRow');
+monthOrder.forEach(m => {
+  const s = data.monthly_summary[m];
+  const div = document.createElement('div');
+  div.className = 'kpi' + (m === '7월' ? ' current' : '');
+  if (m === '7월') {
+    div.innerHTML = `
+      <div class="label">${m} (진행중, ${s.days_elapsed}일차)</div>
+      <div class="value">${s.total_rev_incl.toLocaleString()}원</div>
+      <div class="sub2">누적 매출 · 총 ${s.count}건 (일평균은 월말 마감 후 확정)</div>
+    `;
+  } else {
+    div.innerHTML = `
+      <div class="label">${m}</div>
+      <div class="value">${s.avg_daily_rev.toLocaleString()}원 / 일</div>
+      <div class="sub2">일평균 ${s.avg_daily_count}건 · 누적 매출 ${s.total_rev_incl.toLocaleString()}원 · 총 ${s.count}건</div>
+    `;
+  }
+  kpiRow.appendChild(div);
+});
+
+// Chart 1: 4월~현재 연속 일별 매출 추이
+function dayColor(idx) {
+  let acc = 0;
+  for (const m of monthOrder) {
+    acc += monthBoundaries[m];
+    if (idx < acc) return colors[m];
+  }
+  return colors['7월'];
+}
+new Chart(document.getElementById('dailyChart'), {
+  type: 'line',
+  data: {
+    labels: daily.labels,
+    datasets: [{
+      label: '일별 매출 (VAT 포함, 원)',
+      data: daily.daily_rev,
+      borderColor: '#6c8bff',
+      backgroundColor: '#6c8bff22',
+      fill: true,
+      tension: 0.15,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      segment: {
+        borderColor: ctx => dayColor(ctx.p0DataIndex)
+      }
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `매출: ${ctx.parsed.y.toLocaleString()}원`
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#9aa1b2', maxTicksLimit: 14 },
+        grid: { color: '#262b38' }
+      },
+      y: {
+        ticks: { color: '#9aa1b2', callback: v => (v/10000).toLocaleString() + '만' },
+        grid: { color: '#262b38' },
+        title: { display: true, text: '일별 매출(VAT 포함, 원)', color: '#9aa1b2' }
+      }
+    }
+  }
+});
+
+// Chart 2: MoM cumulative comparison
+new Chart(document.getElementById('momChart'), {
+  type: 'line',
+  data: {
+    labels: Array.from({length:31}, (_,i) => (i+1) + '일'),
+    datasets: monthOrder.map(m => ({
+      label: m,
+      data: data.cum_series[m],
+      borderColor: colors[m],
+      backgroundColor: colors[m],
+      borderWidth: m === '7월' ? 4 : 2,
+      tension: 0.25,
+      pointRadius: m === '7월' ? 3 : 0,
+      spanGaps: false,
+    }))
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#e8eaf0' } },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y ? ctx.parsed.y.toLocaleString() : '-'}원`
+        }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#9aa1b2' }, grid: { color: '#262b38' } },
+      y: {
+        ticks: { color: '#9aa1b2', callback: v => (v/10000).toLocaleString() + '만' },
+        grid: { color: '#262b38' },
+        title: { display: true, text: '누적 매출 (VAT 포함, 원)', color: '#9aa1b2' }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
