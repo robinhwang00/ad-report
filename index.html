@@ -35,13 +35,13 @@
 <body>
 
 <h1>2026 샵라이브 광고 올인원 패키지 — 매출 대시보드</h1>
-<div class="sub">데이터 기준: 2026-07-08 (7월은 8일까지 집행 완료분 기준) · 출처: 2026 샵라이브 광고 올인원 패키지 모니터링 시트 &gt; 월 별 MoM 리스트</div>
+<div class="sub" id="subText">데이터 기준: 2026-07-08 (7월은 8일까지 신청 접수분 기준) · 출처: 2026 샵라이브 광고 올인원 패키지 모니터링 시트 &gt; 월 별 MoM 리스트</div>
 
 <div class="kpi-row" id="kpiRow"></div>
 
 <div class="card">
   <h2>일별 광고매출 추이 (4월 ~ 현재)</h2>
-  <p class="desc">4월 1일부터 7월 8일(오늘)까지 집행일 기준 일별 매출(VAT 포함, 누적이 아닌 당일 실적)을 하나의 연속된 꺾은선으로 표시했습니다.</p>
+  <p class="desc">4월 1일부터 7월 8일(오늘)까지 신청일 기준 일별 매출(VAT 포함, 누적이 아닌 당일 신청분)을 하나의 연속된 꺾은선으로 표시했습니다.</p>
   <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
   <div class="note" style="display:flex; gap:16px; margin-top:12px;">
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c98cff;margin-right:5px;"></span>4월</span>
@@ -55,16 +55,57 @@
   <h2>당월(7월) 누적 매출 추이 — 전월 비교</h2>
   <p class="desc">일자별 누적 매출(VAT 포함)을 4개월 겹쳐서 비교한 그래프입니다. 7월(굵은 선)은 8일까지만 데이터가 있어 이후 구간은 표시되지 않습니다.</p>
   <div class="chart-wrap"><canvas id="momChart"></canvas></div>
-  <div class="note">※ MoM 리스트 시트의 "매출 합계(VAT 포함)"는 해당 월 1일부터 집행일 기준 누적 합산 값입니다.</div>
+  <div class="note">※ MoM 리스트 시트의 "매출 합계(VAT 포함)"는 해당 월 1일부터 신청일 기준 누적 합산 값입니다.</div>
+</div>
+
+<div class="card">
+  <h2 id="forecastTitle">7월 목표 매출 달성 확률</h2>
+  <p class="desc">동적 누적분포 예측 모델: 과거 데이터에서 <b>일자별 누적 기여도 분포 C(d)</b>를 스스로 학습(특정 날짜 하드코딩 없음, 주말 효과 자연 흡수)해 <b>예상 매출 = 현재 누적 ÷ 오늘까지 평균 진척률 C(t)</b> 로 안정적으로 산출합니다. <b>달성 확률</b>은 현재 진행곡선과 가장 닮은 과거 월(Top-1)의 시나리오 성공/실패가 지배하도록 유사도 가중 투표로 계산하고, 실적이 목표를 넘기 전엔 남은 일수에 비례해 100%를 제한(스무딩)합니다. (Claude 분석, <span id="forecastAsOf"></span> 기준 · MoM 시트 데이터로 계산 · 데이터 갱신 시 함께 업데이트)</p>
+  <div class="kpi-row" style="grid-template-columns:repeat(3,1fr); margin-bottom:20px;">
+    <div class="kpi current">
+      <div class="label">목표 달성 확률</div>
+      <div class="value" id="forecastProb" style="font-size:28px;"></div>
+      <div class="sub2" id="forecastProbSub"></div>
+    </div>
+    <div class="kpi">
+      <div class="label">예상 월말 매출 (베이스라인)</div>
+      <div class="value" id="forecastMedian"></div>
+      <div class="sub2" id="forecastScenarioRange"></div>
+    </div>
+    <div class="kpi">
+      <div class="label">현재 누적 · 목표까지 남은 금액</div>
+      <div class="value" id="forecastGap"></div>
+      <div class="sub2" id="forecastGapSub"></div>
+    </div>
+  </div>
+  <div class="chart-wrap"><canvas id="forecastChart"></canvas></div>
+  <div class="note" style="margin-top:12px;">※ 굵은 파란선=당월 실제 신청 누적 + 이후 베이스라인 예상 경로, 회색선=Top-1 최유사 과거월의 실제 곡선(배경 비교), 주황 점선=목표선입니다.</div>
+  <div style="margin-top:20px;">
+    <h3 style="font-size:13px; margin:0 0 8px; color:var(--text);">근거</h3>
+    <ul id="forecastRationale" style="margin:0; padding-left:18px; font-size:12px; color:var(--sub); line-height:1.7;"></ul>
+  </div>
+  <div style="margin-top:18px;">
+    <h3 style="font-size:13px; margin:0 0 8px; color:var(--text);">확률을 끌어올리기 위한 주간 미션</h3>
+    <ul id="forecastMissions" style="margin:0; padding-left:18px; font-size:12px; color:var(--sub); line-height:1.7;"></ul>
+  </div>
 </div>
 
 <script>
-const data = {"monthly_summary": {"4월": {"count": 103, "days_elapsed": 30, "total_rev_incl": 81647500, "avg_daily_rev": 2721583, "avg_daily_count": 3.43}, "5월": {"count": 94, "days_elapsed": 31, "total_rev_incl": 83215000, "avg_daily_rev": 2684355, "avg_daily_count": 3.03}, "6월": {"count": 92, "days_elapsed": 30, "total_rev_incl": 101546500, "avg_daily_rev": 3384883, "avg_daily_count": 3.07}, "7월": {"count": 18, "days_elapsed": 8, "total_rev_incl": 45540000, "avg_daily_rev": 5692500, "avg_daily_count": 2.25}}, "cum_series": {"4월": [21670000, 25190000, 26565000, 26565000, 26565000, 29040000, 32340000, 34732500, 41662500, 41662500, 41662500, 41662500, 44550000, 46365000, 48565000, 53680000, 58465000, 58465000, 58465000, 61187500, 64047500, 69492500, 70812500, 74277500, 74277500, 74277500, 77907500, 80547500, 80547500, 81647500, null], "5월": [40067500, 40067500, 40067500, 42872500, 42872500, 45760000, 48400000, 51040000, 51040000, 51040000, 56320000, 56815000, 60610000, 65395000, 67870000, 67870000, 67870000, 71005000, 72160000, 76120000, 79420000, 82720000, 82720000, 82720000, 82720000, 83215000, 83215000, 83215000, 83215000, 83215000, 83215000], "6월": [55049500, 58569500, 58569500, 61044500, 61594500, 61594500, 61594500, 62694500, 63244500, 65191500, 71846500, 74002500, 74002500, 74002500, 74002500, 75652500, 79332000, 81587000, 88407000, 88407000, 88407000, 90937000, 91597000, 98829500, 100006500, 100006500, 100006500, 100006500, 100996500, 101546500, null], "7월": [33000000, 37015000, 39545000, 39545000, 39545000, 41525000, 41855000, 45540000, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]}, "as_of": "2026-07-08"};
-const daily = {"labels": ["4/1", "4/2", "4/3", "4/4", "4/5", "4/6", "4/7", "4/8", "4/9", "4/10", "4/11", "4/12", "4/13", "4/14", "4/15", "4/16", "4/17", "4/18", "4/19", "4/20", "4/21", "4/22", "4/23", "4/24", "4/25", "4/26", "4/27", "4/28", "4/29", "4/30", "5/1", "5/2", "5/3", "5/4", "5/5", "5/6", "5/7", "5/8", "5/9", "5/10", "5/11", "5/12", "5/13", "5/14", "5/15", "5/16", "5/17", "5/18", "5/19", "5/20", "5/21", "5/22", "5/23", "5/24", "5/25", "5/26", "5/27", "5/28", "5/29", "5/30", "5/31", "6/1", "6/2", "6/3", "6/4", "6/5", "6/6", "6/7", "6/8", "6/9", "6/10", "6/11", "6/12", "6/13", "6/14", "6/15", "6/16", "6/17", "6/18", "6/19", "6/20", "6/21", "6/22", "6/23", "6/24", "6/25", "6/26", "6/27", "6/28", "6/29", "6/30", "7/1", "7/2", "7/3", "7/4", "7/5", "7/6", "7/7", "7/8"], "daily_rev": [21670000, 3520000, 1375000, 0, 0, 2475000, 3300000, 2392500, 6930000, 0, 0, 0, 2887500, 1815000, 2200000, 5115000, 4785000, 0, 0, 2722500, 2860000, 5445000, 1320000, 3465000, 0, 0, 3630000, 2640000, 0, 1100000, 40067500, 0, 0, 2805000, 0, 2887500, 2640000, 2640000, 0, 0, 5280000, 495000, 3795000, 4785000, 2475000, 0, 0, 3135000, 1155000, 3960000, 3300000, 3300000, 0, 0, 0, 495000, 0, 0, 0, 0, 0, 55049500, 3520000, 0, 2475000, 550000, 0, 0, 1100000, 550000, 1947000, 6655000, 2156000, 0, 0, 0, 1650000, 3679500, 2255000, 6820000, 0, 0, 2530000, 660000, 7232500, 1177000, 0, 0, 0, 990000, 550000, 33000000, 4015000, 2530000, 0, 0, 1980000, 330000, 3685000]};
+const data = {"monthly_summary":{"6월":{"avg_daily_rev":3384883,"days_elapsed":30,"avg_daily_count":3.07,"total_rev_incl":101546500,"count":92},"5월":{"avg_daily_rev":2684355,"days_elapsed":31,"avg_daily_count":3.03,"total_rev_incl":83215000,"count":94},"4월":{"avg_daily_rev":2721583,"days_elapsed":30,"avg_daily_count":3.43,"total_rev_incl":81647500,"count":103},"7월":{"avg_daily_rev":4726700,"days_elapsed":10,"avg_daily_count":2.1,"total_rev_incl":47267000,"count":21}},"cum_series":{"6월":[55049500,58569500,58569500,61044500,61594500,61594500,61594500,62694500,63244500,65191500,71846500,74002500,74002500,74002500,74002500,75652500,79332000,81587000,88407000,88407000,88407000,90937000,91597000,98829500,100006500,100006500,100006500,100006500,100996500,101546500,null],"5월":[40067500,40067500,40067500,42872500,42872500,45760000,48400000,51040000,51040000,51040000,56320000,56815000,60610000,65395000,67870000,67870000,67870000,71005000,72160000,76120000,79420000,82720000,82720000,82720000,82720000,83215000,83215000,83215000,83215000,83215000,83215000],"4월":[21670000,25190000,26565000,26565000,26565000,29040000,32340000,34732500,41662500,41662500,41662500,41662500,44550000,46365000,48565000,53680000,58465000,58465000,58465000,61187500,64047500,69492500,70812500,74277500,74277500,74277500,77907500,80547500,80547500,81647500,null],"7월":[33000000,37015000,39545000,39545000,39545000,41525000,41855000,45540000,46167000,47267000,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]},"as_of":"2026-07-10"};
+const daily = {"labels":["4/1","4/2","4/3","4/4","4/5","4/6","4/7","4/8","4/9","4/10","4/11","4/12","4/13","4/14","4/15","4/16","4/17","4/18","4/19","4/20","4/21","4/22","4/23","4/24","4/25","4/26","4/27","4/28","4/29","4/30","5/1","5/2","5/3","5/4","5/5","5/6","5/7","5/8","5/9","5/10","5/11","5/12","5/13","5/14","5/15","5/16","5/17","5/18","5/19","5/20","5/21","5/22","5/23","5/24","5/25","5/26","5/27","5/28","5/29","5/30","5/31","6/1","6/2","6/3","6/4","6/5","6/6","6/7","6/8","6/9","6/10","6/11","6/12","6/13","6/14","6/15","6/16","6/17","6/18","6/19","6/20","6/21","6/22","6/23","6/24","6/25","6/26","6/27","6/28","6/29","6/30","7/1","7/2","7/3","7/4","7/5","7/6","7/7","7/8","7/9","7/10"],"daily_rev":[21670000,3520000,1375000,0,0,2475000,3300000,2392500,6930000,0,0,0,2887500,1815000,2200000,5115000,4785000,0,0,2722500,2860000,5445000,1320000,3465000,0,0,3630000,2640000,0,1100000,40067500,0,0,2805000,0,2887500,2640000,2640000,0,0,5280000,495000,3795000,4785000,2475000,0,0,3135000,1155000,3960000,3300000,3300000,0,0,0,495000,0,0,0,0,0,55049500,3520000,0,2475000,550000,0,0,1100000,550000,1947000,6655000,2156000,0,0,0,1650000,3679500,2255000,6820000,0,0,2530000,660000,7232500,1177000,0,0,0,990000,550000,33000000,4015000,2530000,0,0,1980000,330000,3685000,627000,1100000]};
 
 const monthOrder = ["4월","5월","6월","7월"];
 const colors = { "4월":"#c98cff", "5월":"#5fd0a3", "6월":"#ff9d6c", "7월":"#6c8bff" };
-const monthBoundaries = { "4월":30, "5월":31, "6월":30, "7월":8 };
+const monthBoundaries = {};
+monthOrder.forEach(m => { monthBoundaries[m] = data.monthly_summary[m].days_elapsed; });
+
+// 데이터 기준 안내문 (as_of 기준으로 자동 갱신)
+const currentMonth = monthOrder[monthOrder.length - 1];
+document.getElementById('subText').textContent =
+  `데이터 기준: ${data.as_of} (${currentMonth}은 ${monthBoundaries[currentMonth]}일까지 신청 접수분 기준) · 출처: 2026 샵라이브 광고 올인원 패키지 모니터링 시트 > 월 별 MoM 리스트`;
+
+// 60초마다 새로고침하여 백그라운드에서 갱신된 데이터를 반영
+setTimeout(() => location.reload(), 60000);
 
 // KPI cards
 const kpiRow = document.getElementById('kpiRow');
@@ -179,6 +220,165 @@ new Chart(document.getElementById('momChart'), {
     }
   }
 });
+
+// ============================================================
+// 동적 누적분포 예측 모델 v3 (Dynamic Cumulative-Distribution Forecast)
+// data.cum_series(신청일 기준 MoM 누적)에서 라이브 계산 → 데이터 갱신 시 함께 업데이트.
+//  · 예상 매출 = A_t / C(t)  (과거에서 학습한 동적 누적분포, 유사도 무관·안정적)
+//  · 확률      = Top-1 최유사 과거월이 지배하는 유사도 가중 투표 + 잔여 스무딩
+// (레퍼런스 구현: empirical-scenario-model/ 폴더의 .py / .sql)
+// ============================================================
+const MONTHLY_TARGET = { 7: 80000000 };  // 매월 목표 (매월 공유되는 값을 여기에 추가)
+
+(function runForecast() {
+  const [curYear, curMonth] = data.as_of.split('-').map(Number);
+  const target = MONTHLY_TARGET[curMonth];
+  if (!target) return;
+  const CFG = { ceilingFloor: 0.15, sigmaMin: 1 };
+  const MAXD = 31;
+
+  const daysInMonth = (y, m) => new Date(y, m, 0).getDate();
+  const monthInt = (label) => parseInt(label, 10);
+  const won = (v) => Math.round(v).toLocaleString() + '원';
+  const man = (v) => (v / 10000).toLocaleString(undefined, { maximumFractionDigits: 0 }) + '만';
+  const erf = (x) => { const t = 1 / (1 + 0.3275911 * Math.abs(x));
+    const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return x >= 0 ? y : -y; };
+  const phi = (z) => 0.5 * (1 + erf(z / Math.SQRT2));
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const pstd = (a) => { const m = mean(a); return Math.sqrt(mean(a.map(v => (v - m) ** 2))); };
+
+  // 당월 누적 & elapsed
+  const curSeries = (data.cum_series[curMonth + '월'] || []).filter(v => v != null);
+  const elapsed = curSeries.length;
+  const A_t = curSeries[elapsed - 1];
+
+  // 과거 완결 월
+  const past = [];
+  for (const label of Object.keys(data.cum_series)) {
+    const m = monthInt(label);
+    if (m >= curMonth) continue;
+    const s = (data.cum_series[label] || []).filter(v => v != null);
+    if (s.length < elapsed) continue;
+    past.push({ month: m, series: s, total: s[s.length - 1] });
+  }
+  past.sort((a, b) => a.month - b.month);
+  if (!past.length) return;
+
+  const cumAt = (s, d) => s[Math.min(d, s.length) - 1];
+  const fracAt = (p, d) => cumAt(p.series, d) / p.total;
+
+  // ---- [1] 동적 누적분포 C(d) = 과거월 평균 진척곡선 (특정날짜 하드코딩 없음, 주말 자연흡수) ----
+  const C = [];
+  for (let d = 1; d <= MAXD; d++) C.push(mean(past.map(p => fracAt(p, d))));
+  const C_t = mean(past.map(p => fracAt(p, elapsed)));       // 오늘까지 평균 진척률
+  const s_phi = pstd(past.map(p => fracAt(p, elapsed)));
+
+  // ---- 예상 매출: 리스크 없는 베이스라인 ----
+  const baseline = A_t / C_t;
+
+  // ---- 시나리오 & [2] 유사도(확률 전용) ----
+  const normProg = (s) => { const b = s[elapsed - 1] || 1; return Array.from({ length: elapsed }, (_, i) => s[i] / b); };
+  const curNp = normProg(curSeries);
+  const sc = past.map(p => {
+    const frac = fracAt(p, elapsed);
+    const mp = normProg(p.series);
+    let mse = 0; for (let i = 0; i < elapsed; i++) mse += (curNp[i] - mp[i]) ** 2; mse /= elapsed;
+    return { month: p.month, frac, mse, X: A_t / frac, p };
+  });
+  const bw = mean(sc.map(s => s.mse)) || 1e-12;
+  let wsum = 0; sc.forEach(s => { s.rw = Math.exp(-s.mse / bw); wsum += s.rw; });
+  sc.forEach(s => s.weight = s.rw / wsum);
+
+  // ---- [3] 스무딩 확률 ----
+  const sigma = Math.max(A_t * s_phi / (C_t * C_t), CFG.sigmaMin);
+  sc.forEach(s => s.hit = phi((s.X - target) / sigma));
+  const rawProb = sc.reduce((a, s) => a + s.weight * s.hit, 0);
+  const ceiling = 1 - CFG.ceilingFloor * (1 - C_t);
+  const probability = (A_t >= target ? 1 : Math.min(rawProb, ceiling)) * 100;
+
+  // ---- Top-1 베스트매칭 ----
+  const best = sc.reduce((a, b) => b.mse < a.mse ? b : a);
+
+  // ---- KPI 렌더 ----
+  document.getElementById('forecastAsOf').textContent = data.as_of;
+  document.getElementById('forecastTitle').textContent = `${curMonth}월 목표 매출(${man(target)}원) 달성 확률`;
+  document.getElementById('forecastProb').textContent = Math.round(probability / 5) * 5 + '%';
+  document.getElementById('forecastProbSub').textContent =
+    `Top-1 최유사 ${best.month}월(투표 ${Math.round(best.weight * 100)}%) 지배 · 상한 ${Math.round(ceiling * 100)}% (월말 100% 수렴)`;
+  document.getElementById('forecastMedian').textContent = won(baseline);
+  document.getElementById('forecastScenarioRange').textContent =
+    `평균 진척률 C(${elapsed})=${(C_t * 100).toFixed(1)}% 기준 · 유사도 무관·안정적`;
+  document.getElementById('forecastGap').textContent = won(A_t);
+  document.getElementById('forecastGapSub').textContent = '목표까지 ' + won(Math.max(target - A_t, 0));
+
+  // ---- 차트: 당월 실제+예상 경로 + Top-1 최유사월 실제곡선(배경) + 목표선 ----
+  const dim = daysInMonth(curYear, curMonth);
+  const labels = Array.from({ length: dim }, (_, i) => `${curMonth}/${i + 1}`);
+
+  const actualData = labels.map((_, i) => i < elapsed ? curSeries[i] : null);
+  const projData = labels.map((_, i) => {
+    const d = i + 1;
+    if (d < elapsed) return null;
+    if (d === elapsed) return A_t;                 // 실제-예상 연결점
+    return Math.round(baseline * C[d - 1]);
+  });
+  const bestData = labels.map((_, i) => cumAt(best.p.series, i + 1));
+
+  const datasets = [
+    { label: `목표선 (${man(target)}원)`, data: labels.map(() => target),
+      borderColor: '#ff9d6c', borderDash: [6, 6], borderWidth: 2, pointRadius: 0, tension: 0 },
+    { label: `Top-1 최유사 ${best.month}월 (실제)`, data: bestData,
+      borderColor: '#5a6070', borderWidth: 1.5, tension: 0.2, pointRadius: 0, spanGaps: false },
+    { label: '당월 실제 신청 누적', data: actualData,
+      borderColor: '#6c8bff', backgroundColor: '#6c8bff22', borderWidth: 3, tension: 0.2, spanGaps: false,
+      pointRadius: (ctx) => ctx.dataIndex === elapsed - 1 ? 4 : 0 },
+    { label: `당월 예상 경로 → ${man(baseline)}`, data: projData,
+      borderColor: '#6c8bff', borderDash: [4, 4], borderWidth: 2, tension: 0.2, pointRadius: 0, spanGaps: false },
+  ];
+
+  new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#e8eaf0', boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: (ctx) => ctx.parsed.y == null ? null : `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}원` } }
+      },
+      scales: {
+        x: { ticks: { color: '#9aa1b2', maxTicksLimit: 16 }, grid: { color: '#262b38' } },
+        y: { ticks: { color: '#9aa1b2', callback: v => (v / 10000).toLocaleString() + '만' }, grid: { color: '#262b38' }, title: { display: true, text: '누적 매출 (VAT 포함, 원)', color: '#9aa1b2' } }
+      }
+    }
+  });
+
+  // ---- 근거 ----
+  // 학습된 누적분포에서 "신청 집중 마감 시점"을 동적으로 도출 (25일 등 하드코딩 제거)
+  const dayReach = (frac) => { for (let d = 1; d <= MAXD; d++) if (C[d - 1] >= frac) return d; return MAXD; };
+  const d85 = dayReach(0.85), d95 = dayReach(0.95);
+  const scStr = sc.map(s => `${s.month}월(진척률 ${(s.frac * 100).toFixed(0)}%→${man(s.X)}, ${s.X >= target ? '달성' : '미달'})`).join(' · ');
+  const rationale = [
+    `[1·동적 누적분포] 특정 날짜 하드코딩 없이 과거 각 월의 누적 진척곡선을 평균내 일자별 분포 C(d)를 스스로 학습했습니다(주말 신청 0 등 요일효과는 곡선 기울기에 자연 흡수). 데이터가 스스로 파악한 결과, 월 매출의 85%가 약 <b>${d85}일</b>, 95%가 약 <b>${d95}일</b>까지 신청 완료됩니다.`,
+    `[예상 매출] "현재 누적 ÷ 오늘까지 평균 진척률 C(${elapsed})=${(C_t * 100).toFixed(1)}%" = ${won(baseline)}. 유사도·시나리오 평균을 쓰지 않은 안정적 베이스라인이라 리스크 노이즈가 없습니다.`,
+    `[2·유사도=투표권] 유사도는 예상 매출이 아니라 확률에만 씁니다. 각 과거월 시나리오(현재 실적이 그 달 진척률대로 마감된다면): ${scStr}. 이 중 현재 진행곡선과 가장 닮은 <b>Top-1 ${best.month}월</b>(투표 ${Math.round(best.weight * 100)}%)의 성공/실패가 확률을 지배합니다.`,
+    `[3·스무딩] 각 시나리오를 잔여 불확실성 σ(=${won(sigma)}, 진척률 변동성 기반·월말 0 수렴) 분포로 보고 P=Σw·Φ((X−T)/σ)로 계산, 남은일수 비례 상한 ${Math.round(ceiling * 100)}%를 적용 — 실적이 목표를 넘기 전엔 100%가 나오지 않고 월말에 실제값으로 수렴합니다.`,
+    `해석: 예상 매출(평균 페이스)은 목표에 ${baseline >= target ? '근접/상회' : '근소 미달'}하지만, 가장 닮은 ${best.month}월 패턴대로면 ${man(best.X)}(${best.X >= target ? '달성' : '근소 미달'})이라 확률은 ${Math.round(probability / 5) * 5}%입니다. 과거 표본이 ${past.length}개월(4~6월 성수기)뿐이라 7~8월 비수기는 미반영 — 매월 쌓이면 정밀해집니다.`
+  ];
+  document.getElementById('forecastRationale').innerHTML =
+    rationale.map(r => `<li style="margin-bottom:6px;">${r}</li>`).join('');
+
+  // ---- 주간 미션 (학습된 마감 시점 d85/d95를 동적으로 사용) ----
+  const missions = [
+    { week: '이번 주', mission: '현재 진행곡선이 Top-1 ' + best.month + '월과 가장 닮았으므로, ' + best.month + '월이 목표에 ' + (best.X >= target ? '도달한' : '미달한') + ' 요인을 참고해 부족분을 선제 보완' },
+    { week: `~ ${curMonth}/${d85}`, mission: `학습된 분포상 월 신청의 85%가 ${d85}일까지 완료됩니다. 이 시점 전에 신규 계약 클로징을 최대한 앞당겨 확정하세요(신청이 곧 매출).` },
+    { week: `${curMonth}/${d85} ~ ${curMonth}/${d95}`, mission: `${d85}~${d95}일 구간은 신규 유입이 급감하는 마감 국면 — 미확정 후보 건을 전부 신청 처리해 확정 매출로 전환` },
+    { week: `${curMonth}/${d95} ~ ${curMonth}/${dim}`, mission: '신규 유입보다 이미 신청된 건의 집행/정산 관리에 집중하고, 다음 달 목표에 맞춰 익월분 사전 신청 유도' }
+  ];
+  document.getElementById('forecastMissions').innerHTML =
+    missions.map(m => `<li style="margin-bottom:6px;"><b style="color:var(--text);">${m.week}</b> — ${m.mission}</li>`).join('');
+})();
 </script>
 </body>
 </html>
